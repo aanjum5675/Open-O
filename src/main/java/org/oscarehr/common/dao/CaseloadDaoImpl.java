@@ -28,7 +28,7 @@ public class CaseloadDaoImpl implements CaseloadDao {
     @PersistenceContext(unitName = "entityManagerFactory")
     protected EntityManager entityManager = null;
 
-    // Assume query maps are defined and initialized elsewhere using ?1, ?2, etc. instead of %s
+    // Assume query maps use ?1, ?2, etc.
 
     private String getSafeSearchQuery(String searchQuery) {
         return caseloadSearchQueries.get(searchQuery);
@@ -37,27 +37,26 @@ public class CaseloadDaoImpl implements CaseloadDao {
     @SuppressWarnings("unchecked")
     public List<Integer> getCaseloadDemographicSet(String searchQuery, String[] searchParams, String[] sortParams, CaseloadCategory category, String sortDir, int page, int pageSize) {
         String demoQuery = getSafeSearchQuery(searchQuery);
-        String sortQuery;
         String query;
 
         if (category == CaseloadCategory.Demographic) {
-            query = demoQuery + " ORDER BY last_name " + sortDir + ", first_name " + sortDir + " LIMIT " + (page * pageSize) + ", " + pageSize;
+            query = demoQuery + " ORDER BY last_name ?3, first_name ?4 LIMIT ?5, ?6";
         } else if (category == CaseloadCategory.Age) {
             int split = demoQuery.indexOf(",", demoQuery.indexOf("demographic_no"));
-            query = demoQuery.substring(0, split) + ", CAST((DATE_FORMAT(NOW(), '%Y') - DATE_FORMAT(concat(year_of_birth,month_of_birth,date_of_birth), '%Y') - (DATE_FORMAT(NOW(), '00-%m-%d') < DATE_FORMAT(concat(year_of_birth,month_of_birth,date_of_birth), '00-%m-%d'))) as UNSIGNED INTEGER) as age " + demoQuery.substring(split) +
-                    " ORDER BY ISNULL(age) ASC, age " + sortDir + ", last_name " + sortDir + ", first_name " + sortDir + " LIMIT " + (page * pageSize) + ", " + pageSize;
+            query = demoQuery.substring(0, split) + ", CAST((DATE_FORMAT(NOW(), '%Y') - DATE_FORMAT(concat(year_of_birth,month_of_birth,date_of_birth), '%Y') - (DATE_FORMAT(NOW(), '00-%m-%d') < DATE_FORMAT(concat(year_of_birth,month_of_birth,date_of_birth), '00-%m-%d'))) as UNSIGNED INTEGER) as age " +
+                    demoQuery.substring(split) + " ORDER BY ISNULL(age) ASC, age ?3, last_name ?4, first_name ?5 LIMIT ?6, ?7";
         } else if (category == CaseloadCategory.Sex) {
             int split = demoQuery.indexOf(",", demoQuery.indexOf("demographic_no"));
             query = demoQuery.substring(0, split) + ", sex " + demoQuery.substring(split) +
-                    " ORDER BY sex = '' ASC, sex " + sortDir + ", last_name " + sortDir + ", first_name " + sortDir + " LIMIT " + (page * pageSize) + ", " + pageSize;
+                    " ORDER BY sex = '' ASC, sex ?3, last_name ?4, first_name ?5 LIMIT ?6, ?7";
         } else {
-            sortQuery = sortParams != null ? caseloadSortQueries.get(category.getQuery()) : caseloadSortQueries.get(category.getQuery());
+            String sortQuery = caseloadSortQueries.get(category.getQuery());
             if (category.isMeasurement()) {
                 query = "SELECT Y.demographic_no, Y.last_name, Y.first_name, X." + category.getField() +
-                        " FROM (" + demoQuery + ") as Y LEFT JOIN (" + sortQuery + ") as X on Y.demographic_no = X.demographic_no ORDER BY ISNULL(X." + category.getField() + ") ASC, CAST(X." + category.getField() + " as DECIMAL(10,4)) " + sortDir + ", Y.last_name " + sortDir + ", Y.first_name " + sortDir + " LIMIT " + (page * pageSize) + ", " + pageSize;
+                        " FROM (" + demoQuery + ") as Y LEFT JOIN (" + sortQuery + ") as X on Y.demographic_no = X.demographic_no ORDER BY ISNULL(X." + category.getField() + ") ASC, CAST(X." + category.getField() + " as DECIMAL(10,4)) ?3, Y.last_name ?4, Y.first_name ?5 LIMIT ?6, ?7";
             } else {
                 query = "SELECT Y.demographic_no, Y.last_name, Y.first_name, X." + category.getField() +
-                        " FROM (" + demoQuery + ") as Y LEFT JOIN (" + sortQuery + ") as X on Y.demographic_no = X.demographic_no ORDER BY ISNULL(X." + category.getField() + ") ASC, X." + category.getField() + " " + sortDir + ", Y.last_name " + sortDir + ", Y.first_name " + sortDir + " LIMIT " + (page * pageSize) + ", " + pageSize;
+                        " FROM (" + demoQuery + ") as Y LEFT JOIN (" + sortQuery + ") as X on Y.demographic_no = X.demographic_no ORDER BY ISNULL(X." + category.getField() + ") ASC, X." + category.getField() + " ?3, Y.last_name ?4, Y.first_name ?5 LIMIT ?6, ?7";
             }
         }
 
@@ -72,15 +71,12 @@ public class CaseloadDaoImpl implements CaseloadDao {
                 }
             }
         }
-        if (sortParams != null) {
-            for (String param : sortParams) {
-                try {
-                    q.setParameter(paramIndex++, Integer.parseInt(param));
-                } catch (NumberFormatException e) {
-                    q.setParameter(paramIndex++, param);
-                }
-            }
-        }
+
+        q.setParameter(paramIndex++, sortDir);
+        q.setParameter(paramIndex++, sortDir);
+        q.setParameter(paramIndex++, sortDir);
+        q.setParameter(paramIndex++, page * pageSize);
+        q.setParameter(paramIndex++, pageSize);
 
         List<Object[]> result = q.getResultList();
         List<Integer> demographicNoList = new ArrayList<>();
