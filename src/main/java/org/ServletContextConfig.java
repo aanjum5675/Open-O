@@ -12,6 +12,7 @@ import org.springframework.web.context.ServletContextAware;
 public class ServletContextConfig implements ServletContextAware {
 
     private ServletContext servletContext;
+    
 
     @Override
     public void setServletContext(ServletContext servletContext) {
