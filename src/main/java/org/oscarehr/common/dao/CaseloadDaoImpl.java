@@ -10,7 +10,6 @@
  * <p>
  * modifications made by Magenta Health in 2024.
  */
-
 package org.oscarehr.common.dao;
 
 import org.oscarehr.caseload.CaseloadCategory;
