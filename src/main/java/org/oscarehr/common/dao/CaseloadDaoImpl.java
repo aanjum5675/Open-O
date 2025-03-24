@@ -8,8 +8,9 @@
  * License details are available via "indivica.ca/gplv2"
  * and "gnu.org/licenses/gpl-2.0.html".
  * <p>
- * Modifications made by Magenta Health in 2024.
+ * modifications made by Magenta Health in 2024.
  */
+
 package org.oscarehr.common.dao;
 
 import org.oscarehr.caseload.CaseloadCategory;
